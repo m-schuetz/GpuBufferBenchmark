@@ -67,7 +67,6 @@ struct VulkanCudaSharedMemory {
 	}
 
 	void destroy() {
-		println("freeing memory. size: {:L}", comitted);
 
 		// Destroy the sparse Vulkan buffer (automatically unbinds all sparse ranges)
 		if (vk_buffer != VK_NULL_HANDLE) {
@@ -80,16 +79,22 @@ struct VulkanCudaSharedMemory {
 		// then free Vulkan memory.
 		for (auto& chunk : chunks) {
 			if (chunk.cuHandle) {
-				cuMemUnmap(cptr + chunk.offset, chunk.size);
-				cuMemRelease(chunk.cuHandle);
+				CUresult result = cuMemUnmap(cptr + chunk.offset, chunk.size);
+				CURuntime::assertCudaSuccess(result);
+				
+				result = cuMemRelease(chunk.cuHandle);
+				CURuntime::assertCudaSuccess(result);
 			}
-			if (chunk.vkMemory != VK_NULL_HANDLE)
+
+			if (chunk.vkMemory != VK_NULL_HANDLE){
 				vkFreeMemory(VKRenderer::device, chunk.vkMemory, nullptr);
+			}
 		}
 		chunks.clear();
 
 		if (cptr) {
-			cuMemAddressFree(cptr, virtualSize);
+			CUresult result = cuMemAddressFree(cptr, virtualSize);
+			CURuntime::assertCudaSuccess(result);
 			cptr = 0;
 		}
 	}
@@ -142,13 +147,13 @@ struct VulkanCudaSharedMemory {
 		bci.sType       = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 		bci.pNext       = &extBufInfo;
 		bci.size        = paddedSize;
-		bci.usage       = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-		// bci.usage       = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
-		//                 | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
-		//                 | VK_BUFFER_USAGE_TRANSFER_SRC_BIT
-		//                 | VK_BUFFER_USAGE_TRANSFER_DST_BIT
-		//                 | VK_BUFFER_USAGE_2_INDEX_BUFFER_BIT
-		//                 | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+		// bci.usage       = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+		bci.usage       = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+		                | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+		                | VK_BUFFER_USAGE_TRANSFER_SRC_BIT
+		                | VK_BUFFER_USAGE_TRANSFER_DST_BIT
+		                | VK_BUFFER_USAGE_2_INDEX_BUFFER_BIT
+		                | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 		bci.flags       = VK_BUFFER_CREATE_SPARSE_BINDING_BIT;
 		bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
@@ -237,9 +242,10 @@ struct VulkanCudaSharedMemory {
 			allocInfo.sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 			allocInfo.pNext           = &allocFlags;
 			allocInfo.allocationSize  = chunkSize;
+			// allocInfo.memoryTypeIndex = 4;
 			allocInfo.memoryTypeIndex = VKRenderer::findMemoryType(
 				memReqs.memoryTypeBits, 
-				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT //| VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT// | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
 			);
 
 			VkDeviceMemory vkMemory = VK_NULL_HANDLE;

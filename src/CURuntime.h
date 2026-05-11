@@ -55,4 +55,10 @@ struct CURuntime{
 		exit(6123453456);
 	}
 
+	static uint64_t getFreeGpuMemory(){
+		size_t free = 0, total = 0;
+		cuMemGetInfo(&free, &total);
+		return free;
+	}
+
 };

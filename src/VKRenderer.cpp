@@ -1,6 +1,5 @@
 
 #include "VKRenderer.h"
-#include "Runtime.h"
 #include "Timer.h"
 #include "CURuntime.h"
 
@@ -1030,16 +1029,7 @@ void VKRenderer::loop(
 		// Wait for previous frame
 		vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
 
-		render(); // CUDA kernels + kernel_resolve + 
-
-		auto recordings = Timer::resolve();
-		for (auto recording : recordings) {
-			Runtime::timings.add(recording.label, recording.milliseconds);
-		}
-
-		for (auto& r : Timer::resolveVulkan(device, currentFrame)){
-			Runtime::timings.add(r.label, r.milliseconds);
-		}
+		render(); 
 
 		// Acquire next swapchain image
 		uint32_t imageIndex;

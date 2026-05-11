@@ -36,18 +36,25 @@ struct CudaVirtualMemory{
 	}
 
 	void destroy(){
+		// println("Freeing CudaVirtualMemory");
+
 		if(cptr == 0) return;
 
 		uint64_t offset = 0;
 		for(int i = 0; i < allocHandles.size(); i++){
-			cuMemUnmap(cptr + offset, allocHandleSizes[i]);
-			cuMemRelease(allocHandles[i]);
+			CUresult result = cuMemUnmap(cptr + offset, allocHandleSizes[i]);
+			CURuntime::assertCudaSuccess(result);
+
+			result = cuMemRelease(allocHandles[i]);
+			CURuntime::assertCudaSuccess(result);
+
 			offset += allocHandleSizes[i];
 		}
 		allocHandles.clear();
 		allocHandleSizes.clear();
 
-		cuMemAddressFree(cptr, size);
+		auto result = cuMemAddressFree(cptr, size);
+		CURuntime::assertCudaSuccess(result);
 		cptr = 0;
 		comitted = 0;
 	}
