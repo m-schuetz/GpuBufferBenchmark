@@ -18,6 +18,8 @@ Under different conditions:
 
 # Benchmark Results
 
+Tested on an RTX 4090 with a memory bandwidth of 1TB/s.
+
 Test Data:
 <table>
 	<tr>
